@@ -9,6 +9,9 @@ import queue
 
 
 class TaskType(Enum):
+    """
+    This defines the types of tasks that the TaskManager can perform.
+    """
     tweet_details = 0
     retweets = 1
     followers = 2
@@ -18,7 +21,19 @@ class TaskType(Enum):
 
 
 class TaskManager:
+    """
+    The TaskManager allows scheduling of different type of Twitter data
+    tasks in a queue, which are executed in parallel by multiple processes.
+
+    Member Variables:
+    - The tasks_pending queue stores all the pending tasks in a FIFO queue.
+    - The tasks_pending_dict is a dictionary that stores the set of tasks
+    pending corresponding to each task type.
+    - The folder paths corresponding to where the different types of
+    information will be stored are also defined.
+    """
     tasks_pending = Queue()
+    tasks_pending_dict = defaultdict(set)
 
     base_folder_path = ''
     twitter_folder_path = ''
@@ -27,8 +42,6 @@ class TaskManager:
     followee_folder_path = ''
     tweet_details_folder_path = ''
     retweets_folder_path = ''
-
-    tasks_pending_dict = defaultdict(set)
 
     def __init__(self, base_folder_path, twitter_folder_path, **args):
         self.base_folder_path = base_folder_path
@@ -54,7 +67,11 @@ class TaskManager:
         if not os.path.exists(self.retweets_folder_path):
             os.makedirs(self.retweets_folder_path)
 
-    def do_job(self, api):
+    def do_task(self, api):
+        """
+        Queries the tasks_pending queue to fetch a new task if available,
+        and executes the tasks based on the TaskType.
+        """
         while True:
             try:
                 object_id, task_type = self.tasks_pending.get_nowait()
@@ -85,27 +102,30 @@ class TaskManager:
                         self.tasks_pending_dict[task_type].remove(object_id)
         return True
 
-    def run_jobs(self, apis):
-        # Create processes - each process will use one API key to accomplish
-        # one task at a time
+    def run_tasks(self, apis):
+        """
+        Create processes for parallel execution - each process will use
+        one API key to accomplish one task at a time.
+        """
         processes = []
         for idx in range(len(apis)):
             current_api = apis[idx]
             # api_object = dill.dumps(current_api)
-            p = Process(target=self.do_job, args=(current_api,))
+            p = Process(target=self.do_task, args=(current_api,))
             processes.append(p)
             p.start()
 
+        # Avoiding deadlock
         for idx, p in enumerate(processes):
             while True:
                 running = p.is_alive()
                 if not self.tasks_pending.empty():
-                    self.do_job(apis[idx])
+                    self.do_task(apis[idx])
                 else:
                     if not running:
                         break
 
-        # completing process
+        # Completing processes
         print("Waiting for processes to finish...")
         for p in processes:
             p.join()
@@ -292,6 +312,10 @@ class TaskManager:
                 self.tasks_pending.put((user_id, TaskType.timeline))
 
     def get_all_followers(self, user_id):
+        """
+        Parses through the already fetched followers at previous timesteps
+        to find the complete list of followers of a user.
+        """
         all_followers = set()
 
         time_folder_list = sorted(os.listdir(self.base_folder_path),
@@ -316,6 +340,10 @@ class TaskManager:
         return all_followers
 
     def get_all_followees(self, user_id):
+        """
+        Parses through the already fetched followees at previous timesteps
+        to find the complete list of followees of a user.
+        """
         all_followees = set()
 
         time_folder_list = sorted(os.listdir(self.base_folder_path),
@@ -340,6 +368,10 @@ class TaskManager:
         return all_followees
 
     def get_last_tweet_id(self, user_id):
+        """
+        Parses through the already fetched timelines at previous timesteps
+        to find the last tweet_id fetched from a user's timeline.
+        """
         time_folder_list = sorted(os.listdir(self.base_folder_path),
                                   reverse=True)
 
@@ -361,6 +393,11 @@ class TaskManager:
         return -1
 
     def add_user_to_ignore_list(self, user_obj):
+        """
+        An user-level ignore list is maintined so that celebrity like users
+        are not processed, thereby avoiding exceedance of Twitter API rate
+        limits quickly.
+        """
         if user_obj.followers_count > 20000 or user_obj.friends_count > 20000:
             print("IgnoreList: The user has more than 20000 " +
                   "followers/followees, ignoring.")

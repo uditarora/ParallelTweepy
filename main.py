@@ -6,8 +6,13 @@ from .task_manager import TaskManager
 
 
 def get_twohop_followers(user_ids, task_manager, apis):
+    """
+    Fetches the two-hop follower network of the given users.
+    Two-hop follower network referes to the entire network of the
+    followers of a user as well as the followers of those followers.
+    """
     task_manager.get_followers(user_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
     all_followers = set()
     for followers_file in os.listdir(task_manager.follower_folder_path):
@@ -17,10 +22,14 @@ def get_twohop_followers(user_ids, task_manager, apis):
             task_manager.get_all_followers(followers_file[:-5]))
 
     task_manager.get_followers(user_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
 
 def get_authors(tweet_objects):
+    """
+    Takes in the list of tweet_objects and returns the list of authors
+    of the tweets.
+    """
     user_ids = []
     for tweet in tweet_objects:
         user_ids.append(tweet['user']['id_str'])
@@ -28,24 +37,40 @@ def get_authors(tweet_objects):
 
 
 def process_users(user_ids, user_ignore_list, task_manager, apis):
+    """
+    Processes the list of users and fetches the following data related
+    to them:
+        - Followers and followees of the users
+        - Timelines of the users
+    """
+
+    # This can be used to fetch the two-hop follower network of a user
     # get_twohop_followers(user_ids, task_manager, apis)
 
     filtered_user_ids = [user_id for user_id in user_ids
                          if user_id not in user_ignore_list]
 
     task_manager.get_followers(filtered_user_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
     task_manager.get_followees(filtered_user_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
     task_manager.get_timelines(filtered_user_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
 
 def process_tweets(tweet_ids, user_ignore_list, task_manager, apis):
+    """
+    Processes the list of tweets and fetches the following data related
+    to them:
+        - Tweet objects
+        - Last 100 (max) retweets
+        - Followers and followees of the authors of the tweets
+        - Timelines of the authors of the tweets
+    """
     task_manager.get_tweet_details(tweet_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
     tweet_objects = []
     tweet_details = []
@@ -69,14 +94,14 @@ def process_tweets(tweet_ids, user_ignore_list, task_manager, apis):
             filtered_tweet_ids.append(tweet_id)
 
     task_manager.get_retweets(filtered_tweet_ids)
-    task_manager.run_jobs(apis)
+    task_manager.run_tasks(apis)
 
     process_users(filtered_user_ids, user_ignore_list, task_manager, apis)
 
 
 def create_api_objects():
     """
-    Creates the api objects from the config file
+    Creates the api objects from the config file.
     """
     settings_file = "apikeys/apikeys.txt"
     # Read config settings
@@ -115,6 +140,25 @@ def create_api_objects():
 
 
 def run(user_ids, tweet_ids, curr_datetime, root_dir):
+    """
+    This run method assumes that data is periodically collected from Twitter
+    and stored in folders ordered by timestamp of data collection.
+
+    The task_manager scans the previously stored data, and saves the delta.
+        - In the case of followers/followees, it stores the list of followers
+          added/subtracted at each run.
+        - In the case of timelines, it stores the new tweets by a user after
+          the last fetched tweet from a user's timeline.
+
+    Parameters:
+        - user_ids (Twitter username/user_id): The list of users for which
+          data needs to be collected.
+        - tweet_ids: The list of tweets for which data needs to be collected.
+        - curr_datetime (str): The current timestamp used to create the
+          corresponding directory to store the Twitter data.
+        - root_dir (str): The root directory path where all the timestamp
+          folders are created.
+    """
     print(" --- Collecting twitter data for {} tweets and {} users ---"
           .format(len(tweet_ids), len(user_ids)))
 
