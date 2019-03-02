@@ -2,7 +2,8 @@ import configparser
 import tweepy
 import os
 import json
-from .task_manager import TaskManager
+from task_manager import TaskManager
+import datetime
 
 
 def get_twohop_followers(user_ids, task_manager, apis):
@@ -185,4 +186,8 @@ def run(user_ids, tweet_ids, curr_datetime, root_dir):
 
 
 if __name__ == "__main__":
-    run()
+    user_ids = ['1']
+    tweet_ids = ['1']
+    curr_datetime = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+
+    run(user_ids, tweet_ids, str(curr_datetime), './')
