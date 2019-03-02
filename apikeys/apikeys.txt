@@ -1,0 +1,11 @@
+[API Keys 1]
+API_KEY=api_key1
+API_SECRET=api_secret1
+ACCESS_TOKEN=access_token1
+ACCESS_TOKEN_SECRET=access_token_secret1
+
+[API Keys 2]
+API_KEY=api_key1
+API_SECRET=api_secret1
+ACCESS_TOKEN=access_token1
+ACCESS_TOKEN_SECRET=access_token_secret1
