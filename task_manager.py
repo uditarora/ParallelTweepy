@@ -25,23 +25,13 @@ class TaskManager:
     The TaskManager allows scheduling of different type of Twitter data
     tasks in a queue, which are executed in parallel by multiple processes.
 
-    Member Variables:
+    Instance Variables:
     - The tasks_pending queue stores all the pending tasks in a FIFO queue.
     - The tasks_pending_dict is a dictionary that stores the set of tasks
     pending corresponding to each task type.
     - The folder paths corresponding to where the different types of
     information will be stored are also defined.
     """
-    tasks_pending = Queue()
-    tasks_pending_dict = defaultdict(set)
-
-    base_folder_path = ''
-    twitter_folder_path = ''
-    timeline_folder_path = ''
-    follower_folder_path = ''
-    followee_folder_path = ''
-    tweet_details_folder_path = ''
-    retweets_folder_path = ''
 
     def __init__(self, base_folder_path, twitter_folder_path, **args):
         self.base_folder_path = base_folder_path
@@ -66,6 +56,9 @@ class TaskManager:
         self.retweets_folder_path = twitter_folder_path + 'retweets/'
         if not os.path.exists(self.retweets_folder_path):
             os.makedirs(self.retweets_folder_path)
+
+        self.tasks_pending = Queue()
+        self.tasks_pending_dict = defaultdict(set)
 
     def do_task(self, api):
         """
