@@ -126,7 +126,7 @@ class TaskManager:
     def _get_tweet_details(self, tweet_id, api):
         print("Getting tweet details of tweet {}".format(tweet_id))
 
-        tweet_details = api.get_status(tweet_id)
+        tweet_details = api.get_status(tweet_id, tweet_mode='extended')
 
         print("Writing the details of {} to file...".format(tweet_id))
 
@@ -138,7 +138,7 @@ class TaskManager:
     def _get_retweets(self, tweet_id, api):
         print("Getting retweets of tweet {}".format(tweet_id))
 
-        retweets = api.retweets(tweet_id, 200)
+        retweets = api.retweets(tweet_id, 200, tweet_mode='extended')
 
         print("Writing the {0} retweets of {1} to file".format(
             len(retweets), tweet_id))
@@ -242,12 +242,14 @@ class TaskManager:
             if last_tweet_id != -1:
                 for tweet in tqdm(tweepy.Cursor(
                         api.user_timeline, id=user_id,
-                        since_id=int(last_tweet_id))
+                        since_id=int(last_tweet_id),
+                        tweet_mode='extended')
                         .items(), unit="tweets"):
                     tweets_arr.append(json.dumps(tweet._json))
             else:
                 for tweet in tweepy.Cursor(
-                        api.user_timeline, id=user_id).items():
+                        api.user_timeline, id=user_id,
+                        tweet_mode='extended').items():
                     tweets_arr.append(json.dumps(tweet._json))
         except Exception as e:
             print("Error while fetching user timeline: " + str(e))
