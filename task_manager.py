@@ -18,6 +18,7 @@ class TaskType(Enum):
     twohup_followers = 3
     followees = 4
     timeline = 5
+    user_details = 6
 
 
 class TaskManager:
@@ -33,7 +34,8 @@ class TaskManager:
     information will be stored are also defined.
     """
 
-    def __init__(self, base_folder_path, twitter_folder_path, **args):
+    def __init__(self, base_folder_path, twitter_folder_path,
+                 ignore_list=True, **args):
         self.base_folder_path = base_folder_path
         self.twitter_folder_path = twitter_folder_path
 
@@ -57,8 +59,13 @@ class TaskManager:
         if not os.path.exists(self.retweets_folder_path):
             os.makedirs(self.retweets_folder_path)
 
+        self.user_details_folder_path = twitter_folder_path + 'user_details/'
+        if not os.path.exists(self.user_details_folder_path):
+            os.makedirs(self.user_details_folder_path)
+
         self.tasks_pending = Queue()
         self.tasks_pending_dict = defaultdict(set)
+        self.ignore_list = ignore_list
 
     def do_task(self, api):
         """
@@ -82,6 +89,8 @@ class TaskManager:
                         self._get_followees(object_id, api)
                     elif task_type == TaskType.timeline:
                         self._get_timelines(object_id, api)
+                    elif task_type == TaskType.user_details:
+                        self._get_user_details(object_id, api)
                 except Exception as e:
                     print("\nError: Unable to complete " + str(task_type) +
                           " for id: " + str(object_id) + " - " + str(e) + '\n')
@@ -261,6 +270,26 @@ class TaskManager:
                           '.json', 'w') as fw:
                     json.dump(tweets_arr, fw)
 
+    def _get_user_details(self, user_id, api):
+        print("Getting user details of user {}".format(user_id))
+
+        user_obj = api.get_user(user_id)
+        user_id = user_obj.id_str
+
+        if os.path.exists(self.user_details_folder_path +
+                          str(user_id) + '.json'):
+            print("Already fetched user details for user {}".format(user_id))
+            with open(self.user_details_folder_path + '/' + str(user_id) +
+                      '.json') as f:
+                return json.load(f)
+
+        print("Writing the user object of {} to file...".format(user_id))
+
+        with open(self.user_details_folder_path + '/' + str(user_id) +
+                  '.json', 'w') as fw:
+            json.dump(user_obj._json, fw)
+        return user_obj
+
     def get_tweet_details(self, tweet_ids):
         for tweet_id in tweet_ids:
             if not os.path.exists(self.tweet_details_folder_path +
@@ -305,6 +334,15 @@ class TaskManager:
                     self.tasks_pending_dict[TaskType.timeline]:
                 self.tasks_pending_dict[TaskType.timeline].add(user_id)
                 self.tasks_pending.put((user_id, TaskType.timeline))
+
+    def get_user_details(self, user_ids):
+        for user_id in user_ids:
+            if not os.path.exists(self.user_details_folder_path +
+                                  str(user_id) + '.json') \
+                    and user_id not in \
+                    self.tasks_pending_dict[TaskType.user_details]:
+                self.tasks_pending_dict[TaskType.user_details].add(user_id)
+                self.tasks_pending.put((user_id, TaskType.user_details))
 
     def get_all_followers(self, user_id):
         """
@@ -393,6 +431,9 @@ class TaskManager:
         are not processed, thereby avoiding exceedance of Twitter API rate
         limits quickly.
         """
+        if not self.ignore_list:
+            return False
+
         if user_obj.followers_count > 20000 or user_obj.friends_count > 20000:
             print("IgnoreList: The user has more than 20000 " +
                   "followers/followees, ignoring.")
