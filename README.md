@@ -2,7 +2,7 @@
 A parallel task scheduler for Tweepy.
 
 ## What is this?
-ParallelTweepy you to use multiple Twitter API keys to run Twitter data collection jobs using the Tweepy library in parallel.
+ParallelTweepy allows you to use multiple Twitter API keys to run Twitter data collection jobs using the Tweepy library in parallel.
 
 ## Why?
 Twitter's rate limits make it difficult to collect a lot of data using a single API key. ParallelTweey enables you to enqueue data collection jobs using a easy to use module.
